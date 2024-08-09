@@ -2,7 +2,7 @@
 
 ### 0g labs node Installation Instructions.
 
-[Official documentation](https://0glabs.gitbook.io/0g-doc/run-a-node/validator-node)
+[Official documentation](https://docs.0g.ai/0g-doc/run-a-node/validator-node)
 
 System requirements:</br>
 CPU: Quad Core or larger AMD or Intel (amd64) CPU
@@ -54,45 +54,44 @@ source $HOME/.bash_profile
 ### Download and build binaries
 ```
 cd $HOME
-rm -rf 0g-evmos
-git clone https://github.com/0glabs/0g-evmos.git
-cd 0g-evmos
-git checkout v1.0.0-testnet
-make build
-mv $HOME/0g-evmos/build/evmosd $HOME/go/bin/
+rm -rf 0g-chain
+git clone -b v0.3.0 https://github.com/0glabs/0g-chain.git
+cd 0g-chain
+make install
 ```
 
 # Config and init app
 ```
-evmosd config node tcp://localhost:${OG_PORT}657
-evmosd config keyring-backend os
-evmosd config chain-id zgtendermint_9000-1
-evmosd init "YOUR NODE NAME" --chain-id zgtendermint_9000-1
+0gchaind config node tcp://localhost:${OG_PORT}657
+0gchaind config keyring-backend os
+0gchaind config chain-id zgtendermint_16600-2
+0gchaind init "your name" --chain-id zgtendermint_16600-2
 ```
 
 # Download genesis and addrbook
 ```
-wget -O $HOME/.evmosd/config/genesis.json https://testnet-files.itrocket.net/og/genesis.json
-wget -O $HOME/.evmosd/config/addrbook.json https://testnet-files.itrocket.net/og/addrbook.json
+wget -O $HOME/.0gchain/config/genesis.json https://server-5.itrocket.net/testnet/og/genesis.json
+wget -O $HOME/.0gchain/config/addrbook.json  https://server-5.itrocket.net/testnet/og/addrbook.json
 ```
 
 # Set seeds and peers
 ```
-SEEDS="c9b8e7e220178817c84c7268e186b231bc943671@og-testnet-seed.itrocket.net:47656"
-PEERS=""
-sed -i -e "s/^seeds *=.*/seeds = \"$SEEDS\"/; s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.evmosd/config/config.toml
+SEEDS="8f21742ea5487da6e0697ba7d7b36961d3599567@og-testnet-seed.itrocket.net:47656"
+PEERS="80fa309afab4a35323018ac70a40a446d3ae9caf@og-testnet-peer.itrocket.net:11656,928f42a91548484f35a5c98aa9dcb25fb1790a70@65.21.46.201:26656,0e44ddb20380bc06f489b8a58f6cb634c208d4e8@136.243.43.106:26656,5bb50b80f855b343ac9d8957055fd44b8c51667e@135.181.229.232:31656,593f012c2f496c3e3972e4c302e6c5d3bfef1a2a@38.242.197.125:26656,7207c781cc31324f179bf2dbbd670fa79e119d3b@37.27.131.251:18456,c85eaa1b3cbe4d7fb19138e5a5dc4111491e6e03@115.78.229.59:10156,ffdf7a8cc6dbbd22e25b1590f61da149349bdc2e@135.181.229.206:26656,7e7ca71ae2a6b97ba31af673355f0b3ba9cbbc23@213.199.43.252:26656,5e098c96e69e3e2a943b923eda791ba34543f792@116.202.210.96:26656,8bd2797c8ece0f099a1c31f98e5648d192d8cd54@38.242.146.162:26656,0ae19691f97f5797694c253bc06c79c8b58ea2a8@85.190.242.81:26656,6ed155a028ca398966a80e4daaaf86a7e0104ada@164.68.118.7:12656,9dbb76298d1625ebcc47d08fa7e7911967b63b61@45.159.221.57:26656"
+sed -i -e "/^\[p2p\]/,/^\[/{s/^[[:space:]]*seeds *=.*/seeds = \"$SEEDS\"/}" \
+       -e "/^\[p2p\]/,/^\[/{s/^[[:space:]]*persistent_peers *=.*/persistent_peers = \"$PEERS\"/}" $HOME/.0gchain/config/config.toml
 ```
 
 # Create service file
 ```
-sudo tee /etc/systemd/system/evmosd.service > /dev/null <<EOF
+sudo tee /etc/systemd/system/0gchaind.service > /dev/null <<EOF
 [Unit]
-Description=Og node
+Description=0G node
 After=network-online.target
 [Service]
 User=$USER
-WorkingDirectory=$HOME/.evmosd
-ExecStart=$(which evmosd) start --home $HOME/.evmosd
+WorkingDirectory=$HOME/.0gchain
+ExecStart=$(which 0gchaind) start --home $HOME/.0gchain --log_output_console
 Restart=on-failure
 RestartSec=5
 LimitNOFILE=65535
@@ -103,116 +102,102 @@ EOF
 
 # Reset and download snapshot
 ```
-evmosd tendermint unsafe-reset-all --home $HOME/.evmosd
-if curl -s --head curl https://testnet-files.itrocket.net/og/snap_og.tar.lz4 | head -n 1 | grep "200" > /dev/null; then
-  curl https://testnet-files.itrocket.net/og/snap_og.tar.lz4 | lz4 -dc - | tar -xf - -C $HOME/.evmosd
+0gchaind tendermint unsafe-reset-all --home $HOME/.0gchain
+if curl -s --head curl https://server-5.itrocket.net/testnet/og/og_2024-08-09_586084_snap.tar.lz4 | head -n 1 | grep "200" > /dev/null; then
+  curl https://server-5.itrocket.net/testnet/og/og_2024-08-09_586084_snap.tar.lz4 | lz4 -dc - | tar -xf - -C $HOME/.0gchain
     else
-  echo no have snap
+  echo "no snapshot founded"
 fi
 ```
 
 # enable and start service
 ```
 sudo systemctl daemon-reload
-sudo systemctl enable evmosd
-sudo systemctl restart evmosd && sudo journalctl -u evmosd -f
+sudo systemctl enable 0gchaind
+sudo systemctl restart 0gchaind && sudo journalctl -u 0gchaind -f
 ```
 
 ### Becoming a Validator
 
 # Create wallet key new
 ```
-evmosd keys add $WALLET
+0gchaind keys add $WALLET
 ```
 
 (OPTIONAL) RECOVER EXISTING KEY
 ```
-evmosd keys add $WALLET --recover
-```
-
-# save wallet and validator address
-```
-WALLET_ADDRESS=$(evmosd keys show $WALLET -a)
-VALOPER_ADDRESS=$(evmosd keys show $WALLET --bech val -a)
-echo "export WALLET_ADDRESS="$WALLET_ADDRESS >> $HOME/.bash_profile
-echo "export VALOPER_ADDRESS="$VALOPER_ADDRESS >> $HOME/.bash_profile
-source $HOME/.bash_profile
+0gchaind keys add $WALLET --recover
 ```
 
 # check sync status, once your node is fully synced, the output from above will print "false"
 ```
-evmosd status 2>&1 | jq .SyncInfo
+0gchaind status 2>&1 | jq -r '.SyncInfo.catching_up // .sync_info.catching_up'
 ```
 
-### We receive tokens from the tap in the [discord](https://discord.gg/0glabs)
-```
-The faucet is not working yet, so we are waiting or asking for tokens in the chat.
-```
+### We receive tokens from the tap in the [site](https://faucet.0g.ai/)
 
 # before creating a validator, you need to fund your wallet and check balance
 ```
-evmosd query bank balances $WALLET_ADDRESS
+0gchaind q bank balances $(0gchaind keys show wallet -a) 
 ```
+
 # Create validator
 ```
-evmosd tx staking create-validator \
---amount 1000000aevmos \
---from $WALLET \
---commission-rate 0.1 \
---commission-max-rate 0.2 \
---commission-max-change-rate 0.01 \
---min-self-delegation 1 \
---pubkey $(evmosd tendermint show-validator) \
---moniker "YOUR MONIKER" \
---identity "FFB0AA51A2DF5955" \
---details "I love YTWO❤️" \
---chain-id zgtendermint_9000-1 \
---gas 500000 --gas-prices 99999aevmos \
--y
+0gchaind tx staking create-validator \
+--amount=1000000ua0gi \
+--pubkey=$(0gchaind tendermint show-validator) \
+--moniker="Moniker" \
+--identity=FFB0AA51A2DF5955 \
+--details="I love YTWO❤️" \
+--chain-id=zgtendermint_16600-2 \
+--commission-rate=0.10 \
+--commission-max-rate=0.20 \
+--commission-max-change-rate=0.01 \
+--min-self-delegation=1 \
+--from=wallet \
+--gas-prices=0.0025ua0gi \
+--gas-adjustment=1.5 \
+--gas=auto \
+-y 
 ```
 
 ### Update
 ```
 No update
 
-Current network:zgtendermint_9000-1
-Current version:v1.0.0-testnet
+Current network:zgtendermint_16600-2
+Current version:v0.3.0
 ```
 
 ### Useful commands
 
 Check balance
 ```
-evmosd q bank balances $(evmosd keys show wallet -a) 
+0gchaind q bank balances $(0gchaind keys show wallet -a)
 ```
 
 CHECK SERVICE LOGS
 ```
-sudo journalctl -u evmosd -f --no-hostname -o cat
+sudo journalctl -u 0gchaind -f --no-hostname -o cat
 ```
 
 RESTART SERVICE
 ```
-sudo systemctl restart evmosd
+sudo systemctl restart 0gchaind
 ```
 
 GET VALIDATOR INFO
 ```
-evmosd status 2>&1 | jq -r '.ValidatorInfo // .validator_info'
+0gchaind status 2>&1 | jq -r '.ValidatorInfo // .validator_info'
 ```
 
 DELEGATE TOKENS TO YOURSELF
 ```
-evmosd tx staking delegate $(evmosd keys show wallet --bech val -a) 1000000aevmos --from wallet --chain-id zgtendermint_9000-1 --gas-prices 250000000aevmos --gas-adjustment 1.5 --gas auto -y 
+0gchaind tx staking delegate $(0gchaind keys show wallet --bech val -a) 1000000ua0gi --from wallet --chain-id zgtendermint_16600-2 --gas-prices 0.0025ua0gi --gas-adjustment 1.5 --gas auto -y 
 ```
 
 REMOVE NODE
 Please, before proceeding with the next step! All chain data will be lost! Make sure you have backed up your priv_validator_key.json!
 ```
-sudo systemctl stop evmosd
-sudo systemctl disable evmosd
-sudo rm -rf /etc/systemd/system/evmosd.service
-sudo rm $(which evmosd)
-sudo rm -rf $HOME/.evmosd
-sed -i "/OG_/d" $HOME/.bash_profile
+sudo systemctl stop 0gchaind && sudo systemctl disable 0gchaind && sudo rm /etc/systemd/system/0gchaind.service && sudo systemctl daemon-reload && rm -rf $HOME/.0gchain && rm -rf 0g-chain && sudo rm -rf $(which 0gchaind) 
 ```
